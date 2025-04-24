@@ -3,96 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Tracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  <title>Task Tracker - Cyber Edition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(to right, #e0f7fa, #e1bee7);
-      color: #333;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(to right, #000428, #004e92);
+      color: #0ff;
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
+      overflow-x: hidden;
     }
     h1 {
-      font-family: 'Montserrat', sans-serif;
       text-align: center;
       padding: 30px 0;
-      background-color: #673ab7;
-      color: white;
+      background-color: #000;
+      color: #0ff;
       margin: 0;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      font-size: 2.5rem;
+      box-shadow: 0 0 20px #0ff;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: auto;
       padding: 20px;
-      animation: fadeIn 1s ease-in-out;
+      animation: fadeIn 2s ease-in-out;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .login-form, .task-form, .task-list, .admin-controls {
-      margin-bottom: 30px;
-    }
     input, select, button {
       padding: 12px;
       margin: 10px 0;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-size: 16px;
       width: 100%;
       box-sizing: border-box;
+      background: #111;
+      color: #0ff;
+      box-shadow: inset 0 0 5px #0ff;
       transition: all 0.3s ease;
     }
-    input:focus, select:focus {
-      outline: none;
-      box-shadow: 0 0 5px #4CAF50;
-    }
     button {
-      background: linear-gradient(to right, #43cea2, #185a9d);
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
+      background: #00f;
+      box-shadow: 0 0 10px #00f;
     }
     button:hover {
-      opacity: 0.9;
+      background: #0ff;
+      color: #000;
     }
     .card {
-      background: #fff;
+      background: #111;
+      color: #0ff;
       padding: 20px;
-      border-radius: 12px;
+      border-radius: 8px;
       margin-bottom: 15px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      animation: fadeIn 0.5s ease;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 16px 24px rgba(0,0,0,0.2);
+      box-shadow: 0 0 15px #0ff;
     }
     .hidden { display: none; }
-    .task-form input, .task-form select {
-      width: 48%;
-      display: inline-block;
+    .admin-controls, .task-form, .task-list {
+      margin-bottom: 40px;
     }
-    .task-form button, .admin-controls button {
-      width: 100%;
-    }
-    .task-list, .admin-controls {
-      display: flex;
-      flex-direction: column;
-    }
-    .task-list .card {
-      width: 100%;
-      max-width: 700px;
-      margin: auto;
+    .status-completed { border-left: 6px solid lime; }
+    .status-in-progress { border-left: 6px solid yellow; }
+    .status-pending { border-left: 6px solid red; }
+    #loginTracker {
+      background: #111;
+      color: #0ff;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px #0ff;
     }
   </style>
 </head>
 <body>
-  <h1>Employee Task Tracker</h1>
+  <audio id="loginSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <h1>Cyber Task Tracker</h1>
   <div class="container">
     <div class="login-form" id="loginForm">
       <h2>Login</h2>
@@ -102,7 +91,8 @@
     </div>
 
     <div id="mainContent" class="hidden">
-      <button onclick="logout()" style="background-color: #f44336; margin-bottom: 20px;">Logout</button>
+      <button onclick="logout()" style="background-color: red;">Logout</button>
+      <div id="loginTracker" class="hidden"></div>
 
       <div class="task-form">
         <h2>Assign Task</h2>
@@ -117,47 +107,62 @@
         <div id="tasks"></div>
       </div>
 
-      <div class="admin-controls" id="adminControls">
+      <div class="admin-controls hidden" id="adminControls">
         <h2>Admin Controls</h2>
         <input type="text" id="newEmployeeId" placeholder="Employee ID">
         <button onclick="addEmployee()">Add Employee</button>
-        <button onclick="removeEmployee()" style="background-color: #e53935;">Remove Employee</button>
-        <button onclick="downloadLog()" style="background-color: #3f51b5;">Download Task Log</button>
+        <button onclick="removeEmployee()" style="background-color: red;">Remove Employee</button>
+        <button onclick="downloadLog()" style="background-color: blue;">Download Task Log</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Persistent storage keys
     const STORAGE_TASKS = 'taskTrackerTasks';
     const STORAGE_EMPLOYEES = 'taskTrackerEmployees';
-
-    // Application state
-    let currentUser = null;
+    const STORAGE_LOGS = 'loginLogs';
     const adminId = 'admin';
-    let employees = JSON.parse(localStorage.getItem(STORAGE_EMPLOYEES)) || ['E001', 'E002'];
-    let tasks = JSON.parse(localStorage.getItem(STORAGE_TASKS)) || [];
 
-    // Utility: Save to localStorage
+    let currentUser = null;
+    let employees = [];
+    let tasks = JSON.parse(localStorage.getItem(STORAGE_TASKS)) || [];
+    let logs = JSON.parse(localStorage.getItem(STORAGE_LOGS)) || [];
+
     function saveState() {
       localStorage.setItem(STORAGE_TASKS, JSON.stringify(tasks));
       localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
+      localStorage.setItem(STORAGE_LOGS, JSON.stringify(logs));
     }
 
-    // Login/logout
     function login() {
       const id = document.getElementById('userId').value;
       const pass = document.getElementById('password').value;
       if (id && pass) {
         currentUser = id;
+        const now = new Date().toLocaleString();
+        logs.push({ user: id, time: now, action: 'login' });
+        saveState();
+
+        const sound = document.getElementById('loginSound');
+        sound.play();
+
         document.getElementById('loginForm').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
+        const isAdmin = id === adminId;
+        document.getElementById('adminControls').classList.toggle('hidden', !isAdmin);
+        document.getElementById('loginTracker').classList.toggle('hidden', !isAdmin);
+        if (isAdmin) displayLoginLogs();
+
         populateEmployeeDropdown();
         renderTasks();
-        document.getElementById('adminControls').style.display = (currentUser === adminId) ? 'flex' : 'none';
       }
     }
+
     function logout() {
+      const now = new Date().toLocaleString();
+      logs.push({ user: currentUser, time: now, action: 'logout' });
+      saveState();
+
       currentUser = null;
       document.getElementById('loginForm').classList.remove('hidden');
       document.getElementById('mainContent').classList.add('hidden');
@@ -165,7 +170,11 @@
       document.getElementById('password').value = '';
     }
 
-    // Employee dropdown
+    function displayLoginLogs() {
+      const div = document.getElementById('loginTracker');
+      div.innerHTML = '<h3>Login Tracker</h3>' + logs.map(log => `<p>${log.user} ${log.action} at ${log.time}</p>`).join('');
+    }
+
     function populateEmployeeDropdown() {
       const dropdown = document.getElementById('assignedTo');
       dropdown.innerHTML = '';
@@ -179,7 +188,6 @@
       });
     }
 
-    // Task operations
     function assignTask() {
       const title = document.getElementById('taskTitle').value;
       const description = document.getElementById('taskDescription').value;
@@ -192,6 +200,7 @@
         document.getElementById('taskDescription').value = '';
       }
     }
+
     function renderTasks() {
       const container = document.getElementById('tasks');
       container.innerHTML = '';
@@ -199,44 +208,48 @@
         if (task.assignedTo === currentUser || currentUser === adminId || task.assignedBy === currentUser) {
           const card = document.createElement('div');
           card.className = 'card';
+          if (task.status === 'Completed') card.classList.add('status-completed');
+          else if (task.status === 'In Progress') card.classList.add('status-in-progress');
+          else card.classList.add('status-pending');
+
           card.innerHTML = `
             <h3>${task.title}</h3>
             <p>${task.description}</p>
-            <p><strong>Assigned To:</strong> ${task.assignedTo}</p>
-            <p><strong>Assigned By:</strong> ${task.assignedBy}</p>
+            <p><strong>To:</strong> ${task.assignedTo}</p>
+            <p><strong>By:</strong> ${task.assignedBy}</p>
             <p><strong>Status:</strong> ${task.status}</p>
-            <div class="task-status">
-              <label for="status-${index}">Change Status:</label>
-              <select id="status-${index}" onchange="updateStatus(${index}, this.value)">
+            <label>Update Status:
+              <select onchange="updateStatus(${index}, this.value)">
                 <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
                 <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
                 <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
               </select>
-            </div>
+            </label>
           `;
           if (task.assignedBy === currentUser || currentUser === adminId) {
-            const removeBtn = document.createElement('button');
-            removeBtn.textContent = 'Remove';
-            removeBtn.style.backgroundColor = '#d32f2f';
-            removeBtn.onclick = () => removeTask(index);
-            card.appendChild(removeBtn);
+            const btn = document.createElement('button');
+            btn.textContent = 'Remove';
+            btn.style.backgroundColor = 'red';
+            btn.onclick = () => removeTask(index);
+            card.appendChild(btn);
           }
           container.appendChild(card);
         }
       });
     }
+
     function updateStatus(index, status) {
       tasks[index].status = status;
       saveState();
       renderTasks();
     }
+
     function removeTask(index) {
       tasks.splice(index, 1);
       saveState();
       renderTasks();
     }
 
-    // Admin: manage employees
     function addEmployee() {
       const newId = document.getElementById('newEmployeeId').value;
       if (newId && !employees.includes(newId)) {
@@ -246,6 +259,7 @@
         document.getElementById('newEmployeeId').value = '';
       }
     }
+
     function removeEmployee() {
       const newId = document.getElementById('newEmployeeId').value;
       const idx = employees.indexOf(newId);
@@ -257,7 +271,6 @@
       }
     }
 
-    // Export tasks as CSV
     function downloadLog() {
       let csv = 'Title,Description,Assigned To,Assigned By,Status\n';
       tasks.forEach(t => {
@@ -273,8 +286,8 @@
       document.body.removeChild(a);
     }
 
-    // Initialize on load
     document.addEventListener('DOMContentLoaded', () => {
+      employees = [];
       saveState();
     });
   </script>
