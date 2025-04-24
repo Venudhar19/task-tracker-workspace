@@ -33,7 +33,7 @@
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .login-form, .task-form, .task-list, .add-employee-form {
+    .login-form, .task-form, .task-list, .admin-controls {
       margin-bottom: 30px;
     }
     input, select, button {
@@ -54,6 +54,7 @@
       background: linear-gradient(to right, #43cea2, #185a9d);
       color: white;
       font-weight: bold;
+      cursor: pointer;
     }
     button:hover {
       opacity: 0.9;
@@ -76,10 +77,10 @@
       width: 48%;
       display: inline-block;
     }
-    .task-form button, .add-employee-form button {
+    .task-form button, .admin-controls button {
       width: 100%;
     }
-    .task-list, .add-employee-form {
+    .task-list, .admin-controls {
       display: flex;
       flex-direction: column;
     }
@@ -87,10 +88,6 @@
       width: 100%;
       max-width: 700px;
       margin: auto;
-    }
-    .task-status select {
-      width: 150px;
-      margin-left: 10px;
     }
   </style>
 </head>
@@ -120,21 +117,34 @@
         <div id="tasks"></div>
       </div>
 
-      <div class="add-employee-form" id="adminControls">
-        <h2>Add/Remove Employee</h2>
+      <div class="admin-controls" id="adminControls">
+        <h2>Admin Controls</h2>
         <input type="text" id="newEmployeeId" placeholder="Employee ID">
         <button onclick="addEmployee()">Add Employee</button>
         <button onclick="removeEmployee()" style="background-color: #e53935;">Remove Employee</button>
+        <button onclick="downloadLog()" style="background-color: #3f51b5;">Download Task Log</button>
       </div>
     </div>
   </div>
 
   <script>
+    // Persistent storage keys
+    const STORAGE_TASKS = 'taskTrackerTasks';
+    const STORAGE_EMPLOYEES = 'taskTrackerEmployees';
+
+    // Application state
     let currentUser = null;
     const adminId = 'admin';
-    const employees = ['E001', 'E002'];
-    const tasks = [];
+    let employees = JSON.parse(localStorage.getItem(STORAGE_EMPLOYEES)) || ['E001', 'E002'];
+    let tasks = JSON.parse(localStorage.getItem(STORAGE_TASKS)) || [];
 
+    // Utility: Save to localStorage
+    function saveState() {
+      localStorage.setItem(STORAGE_TASKS, JSON.stringify(tasks));
+      localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(employees));
+    }
+
+    // Login/logout
     function login() {
       const id = document.getElementById('userId').value;
       const pass = document.getElementById('password').value;
@@ -144,15 +154,9 @@
         document.getElementById('mainContent').classList.remove('hidden');
         populateEmployeeDropdown();
         renderTasks();
-
-        if (currentUser === adminId) {
-          document.getElementById('adminControls').style.display = 'block';
-        } else {
-          document.getElementById('adminControls').style.display = 'none';
-        }
+        document.getElementById('adminControls').style.display = (currentUser === adminId) ? 'flex' : 'none';
       }
     }
-
     function logout() {
       currentUser = null;
       document.getElementById('loginForm').classList.remove('hidden');
@@ -161,6 +165,7 @@
       document.getElementById('password').value = '';
     }
 
+    // Employee dropdown
     function populateEmployeeDropdown() {
       const dropdown = document.getElementById('assignedTo');
       dropdown.innerHTML = '';
@@ -174,18 +179,19 @@
       });
     }
 
+    // Task operations
     function assignTask() {
       const title = document.getElementById('taskTitle').value;
       const description = document.getElementById('taskDescription').value;
       const assignedTo = document.getElementById('assignedTo').value;
       if (title && description && assignedTo) {
         tasks.push({ title, description, assignedTo, assignedBy: currentUser, status: 'Pending' });
+        saveState();
         renderTasks();
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
       }
     }
-
     function renderTasks() {
       const container = document.getElementById('tasks');
       container.innerHTML = '';
@@ -208,34 +214,69 @@
               </select>
             </div>
           `;
+          if (task.assignedBy === currentUser || currentUser === adminId) {
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Remove';
+            removeBtn.style.backgroundColor = '#d32f2f';
+            removeBtn.onclick = () => removeTask(index);
+            card.appendChild(removeBtn);
+          }
           container.appendChild(card);
         }
       });
     }
-
     function updateStatus(index, status) {
       tasks[index].status = status;
+      saveState();
+      renderTasks();
+    }
+    function removeTask(index) {
+      tasks.splice(index, 1);
+      saveState();
       renderTasks();
     }
 
+    // Admin: manage employees
     function addEmployee() {
       const newId = document.getElementById('newEmployeeId').value;
       if (newId && !employees.includes(newId)) {
         employees.push(newId);
+        saveState();
+        populateEmployeeDropdown();
+        document.getElementById('newEmployeeId').value = '';
+      }
+    }
+    function removeEmployee() {
+      const newId = document.getElementById('newEmployeeId').value;
+      const idx = employees.indexOf(newId);
+      if (idx > -1) {
+        employees.splice(idx, 1);
+        saveState();
         populateEmployeeDropdown();
         document.getElementById('newEmployeeId').value = '';
       }
     }
 
-    function removeEmployee() {
-      const newId = document.getElementById('newEmployeeId').value;
-      const index = employees.indexOf(newId);
-      if (index > -1) {
-        employees.splice(index, 1);
-        populateEmployeeDropdown();
-        document.getElementById('newEmployeeId').value = '';
-      }
+    // Export tasks as CSV
+    function downloadLog() {
+      let csv = 'Title,Description,Assigned To,Assigned By,Status\n';
+      tasks.forEach(t => {
+        csv += `${t.title},${t.description},${t.assignedTo},${t.assignedBy},${t.status}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'task_log.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+      saveState();
+    });
   </script>
 </body>
 </html>
