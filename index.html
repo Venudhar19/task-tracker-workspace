@@ -287,9 +287,18 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      employees = [];
-      saveState();
-    });
+  employees = JSON.parse(localStorage.getItem(STORAGE_EMPLOYEES)) || [];
+  tasks = JSON.parse(localStorage.getItem(STORAGE_TASKS)) || [];
+  logs = JSON.parse(localStorage.getItem(STORAGE_LOGS)) || [];
+
+  // Optional: render admin panel if already logged in
+  if (currentUser) {
+    populateEmployeeDropdown();
+    renderTasks();
+    if (currentUser === adminId) displayLoginLogs();
+  }
+});
+
   </script>
 </body>
 </html>
