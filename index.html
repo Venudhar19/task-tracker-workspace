@@ -8,7 +8,7 @@
   <style>
     body {
       font-family: 'Roboto', sans-serif;
-      background: linear-gradient(to right, #e0f7fa, #e1bee7);
+      background: linear-gradient(135deg, #89f7fe, #66a6ff);
       color: #333;
       margin: 0;
       padding: 0;
@@ -18,10 +18,10 @@
       font-family: 'Montserrat', sans-serif;
       text-align: center;
       padding: 30px 0;
-      background-color: #673ab7;
+      background-color: #3f51b5;
       color: white;
       margin: 0;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
     .container {
       max-width: 1000px;
@@ -32,9 +32,6 @@
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-    .login-form, .task-form, .task-list, .add-employee-form {
-      margin-bottom: 30px;
     }
     input, select, button {
       padding: 12px;
@@ -76,10 +73,10 @@
       width: 48%;
       display: inline-block;
     }
-    .task-form button, .add-employee-form button {
+    .task-form button {
       width: 100%;
     }
-    .task-list, .add-employee-form {
+    .task-list {
       display: flex;
       flex-direction: column;
     }
@@ -92,10 +89,16 @@
       width: 150px;
       margin-left: 10px;
     }
+    .employee-form {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f1f8e9;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body>
-  <h1>Employee Task Tracker</h1>
+  <h1>Task Tracker</h1>
   <div class="container">
     <div class="login-form" id="loginForm">
       <h2>Login</h2>
@@ -106,6 +109,20 @@
 
     <div id="mainContent" class="hidden">
       <button onclick="logout()" style="background-color: #f44336; margin-bottom: 20px;">Logout</button>
+
+      <div id="adminPanel" class="hidden">
+        <div class="employee-form">
+          <h2>Add New Employee</h2>
+          <input type="text" id="newEmpId" placeholder="New Employee ID">
+          <input type="password" id="newEmpPass" placeholder="Password">
+          <button onclick="addEmployee()">Add Employee</button>
+        </div>
+        <div class="employee-form">
+          <h2>Remove Employee</h2>
+          <input type="text" id="removeEmpId" placeholder="Employee ID to Remove">
+          <button onclick="removeEmployee()">Remove Employee</button>
+        </div>
+      </div>
 
       <div class="task-form">
         <h2>Assign Task</h2>
@@ -119,132 +136,163 @@
         <h2>Task List</h2>
         <div id="tasks"></div>
       </div>
-
-      <div class="add-employee-form" id="adminControls">
-        <h2>Add/Remove Employee</h2>
-        <input type="text" id="newEmployeeId" placeholder="Employee ID">
-        <button onclick="addEmployee()">Add Employee</button>
-        <button onclick="removeEmployee()" style="background-color: #e53935;">Remove Employee</button>
-      </div>
     </div>
   </div>
 
   <script>
     let currentUser = null;
     const adminId = 'admin';
-    const employees = ['E001', 'E002'];
-    const tasks = [];
 
-    function login() {
+    // Function to fetch data from localStorage
+    function fetchDataFromLocalStorage(key) {
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : null;
+    }
+
+    // Function to save data to localStorage
+    function saveDataToLocalStorage(key, data) {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    // Login function
+    async function login() {
       const id = document.getElementById('userId').value;
       const pass = document.getElementById('password').value;
-      if (id && pass) {
+
+      const users = fetchDataFromLocalStorage('users') || {};
+      if (users[id] && users[id].password === pass) {
         currentUser = id;
         document.getElementById('loginForm').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
+        if (id === adminId) document.getElementById('adminPanel').classList.remove('hidden');
         populateEmployeeDropdown();
         renderTasks();
-
-        if (currentUser === adminId) {
-          document.getElementById('adminControls').style.display = 'block';
-        } else {
-          document.getElementById('adminControls').style.display = 'none';
-        }
+      } else {
+        alert('Invalid credentials');
       }
     }
 
+    // Logout function
     function logout() {
       currentUser = null;
       document.getElementById('loginForm').classList.remove('hidden');
       document.getElementById('mainContent').classList.add('hidden');
       document.getElementById('userId').value = '';
       document.getElementById('password').value = '';
+      document.getElementById('adminPanel').classList.add('hidden');
     }
 
+    // Add new employee function
+    function addEmployee() {
+      const newEmpId = document.getElementById('newEmpId').value;
+      const newEmpPass = document.getElementById('newEmpPass').value;
+      
+      if (newEmpId && newEmpPass) {
+        const users = fetchDataFromLocalStorage('users') || {};
+        users[newEmpId] = { password: newEmpPass };
+        saveDataToLocalStorage('users', users);
+        alert('Employee added');
+        document.getElementById('newEmpId').value = '';
+        document.getElementById('newEmpPass').value = '';
+        populateEmployeeDropdown();
+      }
+    }
+
+    // Remove employee function
+    function removeEmployee() {
+      const empId = document.getElementById('removeEmpId').value;
+      if (empId) {
+        const users = fetchDataFromLocalStorage('users') || {};
+        delete users[empId];
+        saveDataToLocalStorage('users', users);
+        alert('Employee removed');
+        document.getElementById('removeEmpId').value = '';
+        populateEmployeeDropdown();
+      }
+    }
+
+    // Populate employee dropdown
     function populateEmployeeDropdown() {
+      const users = fetchDataFromLocalStorage('users') || {};
       const dropdown = document.getElementById('assignedTo');
       dropdown.innerHTML = '';
-      employees.forEach(emp => {
-        if (emp !== currentUser) {
-          const option = document.createElement('option');
-          option.value = emp;
-          option.text = emp;
-          dropdown.appendChild(option);
+      
+      Object.keys(users).forEach(id => {
+        if (id !== currentUser) {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.text = id;
+          dropdown.appendChild(opt);
         }
       });
     }
 
+    // Assign task function
     function assignTask() {
       const title = document.getElementById('taskTitle').value;
       const description = document.getElementById('taskDescription').value;
       const assignedTo = document.getElementById('assignedTo').value;
+      
       if (title && description && assignedTo) {
-        const taskId = Date.now();
-        tasks.push({ id: taskId, title, description, assignedTo, assignedBy: currentUser, status: 'Pending' });
-        renderTasks();
+        const task = { id: Date.now(), title, description, assignedTo, assignedBy: currentUser, status: 'Pending' };
+        const tasks = fetchDataFromLocalStorage('tasks') || {};
+        tasks[task.id] = task;
+        saveDataToLocalStorage('tasks', tasks);
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
+        renderTasks();
       }
     }
 
+    // Render tasks function
     function renderTasks() {
       const container = document.getElementById('tasks');
       container.innerHTML = '';
-      tasks.forEach((task, index) => {
-        if (task.assignedTo === currentUser || currentUser === adminId || task.assignedBy === currentUser) {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <h3>${task.title}</h3>
-            <p>${task.description}</p>
-            <p><strong>Assigned To:</strong> ${task.assignedTo}</p>
-            <p><strong>Assigned By:</strong> ${task.assignedBy}</p>
-            <p><strong>Status:</strong> ${task.status}</p>
-            <button onclick="deleteTask(${task.id})" style="background-color: #f44336; margin-top: 10px;">Delete Task</button>
-            <div class="task-status">
-              <label for="status-${index}">Change Status:</label>
-              <select id="status-${index}" onchange="updateStatus(${index}, this.value)">
-                <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
-              </select>
-            </div>
-          `;
-          container.appendChild(card);
-        }
-      });
+      const tasks = fetchDataFromLocalStorage('tasks');
+      
+      if (tasks) {
+        Object.values(tasks).forEach(task => {
+          if (task.assignedTo === currentUser || currentUser === adminId || task.assignedBy === currentUser) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+              <h3>${task.title}</h3>
+              <p>${task.description}</p>
+              <p><strong>Assigned To:</strong> ${task.assignedTo}</p>
+              <p><strong>Assigned By:</strong> ${task.assignedBy}</p>
+              <p><strong>Status:</strong> ${task.status}</p>
+              <div class="task-status">
+                <label for="status-${task.id}">Change Status:</label>
+                <select id="status-${task.id}" onchange="updateStatus(${task.id}, this.value)">
+                  <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                  <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                  <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                </select>
+              </div>
+              <button onclick="deleteTask(${task.id})" style="background-color: #f44336; margin-top: 10px;">Delete Task</button>
+            `;
+            container.appendChild(card);
+          }
+        });
+      }
     }
 
-    function updateStatus(index, status) {
-      tasks[index].status = status;
-      renderTasks();
-    }
-
-    function deleteTask(taskId) {
-      const taskIndex = tasks.findIndex(task => task.id === taskId);
-      if (taskIndex > -1) {
-        tasks.splice(taskIndex, 1);
+    // Update task status
+    function updateStatus(taskId, status) {
+      const tasks = fetchDataFromLocalStorage('tasks');
+      if (tasks[taskId]) {
+        tasks[taskId].status = status;
+        saveDataToLocalStorage('tasks', tasks);
         renderTasks();
       }
     }
 
-    function addEmployee() {
-      const newId = document.getElementById('newEmployeeId').value;
-      if (newId && !employees.includes(newId)) {
-        employees.push(newId);
-        populateEmployeeDropdown();
-        document.getElementById('newEmployeeId').value = '';
-      }
-    }
-
-    function removeEmployee() {
-      const newId = document.getElementById('newEmployeeId').value;
-      const index = employees.indexOf(newId);
-      if (index > -1) {
-        employees.splice(index, 1);
-        populateEmployeeDropdown();
-        document.getElementById('newEmployeeId').value = '';
-      }
+    // Delete task
+    function deleteTask(taskId) {
+      const tasks = fetchDataFromLocalStorage('tasks');
+      delete tasks[taskId];
+      saveDataToLocalStorage('tasks', tasks);
+      renderTasks();
     }
   </script>
 </body>
