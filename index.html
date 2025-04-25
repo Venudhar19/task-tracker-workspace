@@ -4,89 +4,248 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Task Tracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
       font-family: 'Roboto', sans-serif;
-      background-color: #f8f9fa;
-      color: #212529;
+      background: linear-gradient(to right, #e0f7fa, #e1bee7);
+      color: #333;
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
     }
-    header {
-      background-color: #343a40;
-      padding: 20px 0;
-      color: #ffffff;
+    h1 {
+      font-family: 'Montserrat', sans-serif;
       text-align: center;
-    }
-    header h1 {
+      padding: 30px 0;
+      background-color: #673ab7;
+      color: white;
       margin: 0;
-      font-size: 2.5rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 30px 20px;
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+      animation: fadeIn 1s ease-in-out;
     }
-    .section {
-      margin-bottom: 40px;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    .section h2 {
-      margin-bottom: 20px;
-      font-size: 1.75rem;
-      color: #343a40;
+    .login-form, .task-form, .task-list, .add-employee-form {
+      margin-bottom: 30px;
     }
     input, select, button {
-      display: block;
-      width: 100%;
       padding: 12px;
-      margin-bottom: 15px;
-      border: 1px solid #ced4da;
-      border-radius: 5px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
       font-size: 16px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    input:focus, select:focus {
+      outline: none;
+      box-shadow: 0 0 5px #4CAF50;
     }
     button {
-      background-color: #007bff;
-      color: #fff;
-      border: none;
+      background: linear-gradient(to right, #43cea2, #185a9d);
+      color: white;
+      font-weight: bold;
     }
     button:hover {
-      background-color: #0056b3;
+      opacity: 0.9;
     }
     .card {
-      background-color: #ffffff;
+      background: #fff;
       padding: 20px;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 20px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: fadeIn 0.5s ease;
     }
-    .status-completed {
-      border-left: 6px solid #28a745;
-      padding-left: 10px;
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 16px 24px rgba(0,0,0,0.2);
     }
-    .status-in-progress {
-      border-left: 6px solid #ffc107;
-      padding-left: 10px;
+    .hidden { display: none; }
+    .task-form input, .task-form select {
+      width: 48%;
+      display: inline-block;
     }
-    .status-pending {
-      border-left: 6px solid #dc3545;
-      padding-left: 10px;
+    .task-form button, .add-employee-form button {
+      width: 100%;
     }
-    .hidden {
-      display: none;
+    .task-list, .add-employee-form {
+      display: flex;
+      flex-direction: column;
+    }
+    .task-list .card {
+      width: 100%;
+      max-width: 700px;
+      margin: auto;
+    }
+    .task-status select {
+      width: 150px;
+      margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Task Tracker</h1>
-  </header>
+  <h1>Employee Task Tracker</h1>
   <div class="container">
-    <!-- Placeholder for Task Tracker content (login, task assign, etc.) -->
+    <div class="login-form" id="loginForm">
+      <h2>Login</h2>
+      <input type="text" id="userId" placeholder="User ID">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="mainContent" class="hidden">
+      <button onclick="logout()" style="background-color: #f44336; margin-bottom: 20px;">Logout</button>
+
+      <div class="task-form">
+        <h2>Assign Task</h2>
+        <input type="text" id="taskTitle" placeholder="Task Title">
+        <input type="text" id="taskDescription" placeholder="Task Description">
+        <select id="assignedTo"></select>
+        <button onclick="assignTask()">Assign</button>
+      </div>
+
+      <div class="task-list">
+        <h2>Task List</h2>
+        <div id="tasks"></div>
+      </div>
+
+      <div class="add-employee-form" id="adminControls">
+        <h2>Add/Remove Employee</h2>
+        <input type="text" id="newEmployeeId" placeholder="Employee ID">
+        <button onclick="addEmployee()">Add Employee</button>
+        <button onclick="removeEmployee()" style="background-color: #e53935;">Remove Employee</button>
+      </div>
+    </div>
   </div>
+
   <script>
-    // Placeholder for Task Tracker JavaScript logic
+    let currentUser = null;
+    const adminId = 'admin';
+    const employees = ['E001', 'E002'];
+    const tasks = [];
+
+    function login() {
+      const id = document.getElementById('userId').value;
+      const pass = document.getElementById('password').value;
+      if (id && pass) {
+        currentUser = id;
+        document.getElementById('loginForm').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        populateEmployeeDropdown();
+        renderTasks();
+
+        if (currentUser === adminId) {
+          document.getElementById('adminControls').style.display = 'block';
+        } else {
+          document.getElementById('adminControls').style.display = 'none';
+        }
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('loginForm').classList.remove('hidden');
+      document.getElementById('mainContent').classList.add('hidden');
+      document.getElementById('userId').value = '';
+      document.getElementById('password').value = '';
+    }
+
+    function populateEmployeeDropdown() {
+      const dropdown = document.getElementById('assignedTo');
+      dropdown.innerHTML = '';
+      employees.forEach(emp => {
+        if (emp !== currentUser) {
+          const option = document.createElement('option');
+          option.value = emp;
+          option.text = emp;
+          dropdown.appendChild(option);
+        }
+      });
+    }
+
+    function assignTask() {
+      const title = document.getElementById('taskTitle').value;
+      const description = document.getElementById('taskDescription').value;
+      const assignedTo = document.getElementById('assignedTo').value;
+      if (title && description && assignedTo) {
+        const taskId = Date.now();
+        tasks.push({ id: taskId, title, description, assignedTo, assignedBy: currentUser, status: 'Pending' });
+        renderTasks();
+        document.getElementById('taskTitle').value = '';
+        document.getElementById('taskDescription').value = '';
+      }
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasks');
+      container.innerHTML = '';
+      tasks.forEach((task, index) => {
+        if (task.assignedTo === currentUser || currentUser === adminId || task.assignedBy === currentUser) {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <h3>${task.title}</h3>
+            <p>${task.description}</p>
+            <p><strong>Assigned To:</strong> ${task.assignedTo}</p>
+            <p><strong>Assigned By:</strong> ${task.assignedBy}</p>
+            <p><strong>Status:</strong> ${task.status}</p>
+            <button onclick="deleteTask(${task.id})" style="background-color: #f44336; margin-top: 10px;">Delete Task</button>
+            <div class="task-status">
+              <label for="status-${index}">Change Status:</label>
+              <select id="status-${index}" onchange="updateStatus(${index}, this.value)">
+                <option value="Pending" ${task.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>Completed</option>
+              </select>
+            </div>
+          `;
+          container.appendChild(card);
+        }
+      });
+    }
+
+    function updateStatus(index, status) {
+      tasks[index].status = status;
+      renderTasks();
+    }
+
+    function deleteTask(taskId) {
+      const taskIndex = tasks.findIndex(task => task.id === taskId);
+      if (taskIndex > -1) {
+        tasks.splice(taskIndex, 1);
+        renderTasks();
+      }
+    }
+
+    function addEmployee() {
+      const newId = document.getElementById('newEmployeeId').value;
+      if (newId && !employees.includes(newId)) {
+        employees.push(newId);
+        populateEmployeeDropdown();
+        document.getElementById('newEmployeeId').value = '';
+      }
+    }
+
+    function removeEmployee() {
+      const newId = document.getElementById('newEmployeeId').value;
+      const index = employees.indexOf(newId);
+      if (index > -1) {
+        employees.splice(index, 1);
+        populateEmployeeDropdown();
+        document.getElementById('newEmployeeId').value = '';
+      }
+    }
   </script>
 </body>
 </html>
