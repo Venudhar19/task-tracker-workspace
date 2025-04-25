@@ -140,27 +140,41 @@
   </div>
 
   <script>
+    // Initialize sample users (if they don't exist)
+    if (!localStorage.getItem('users')) {
+      const sampleUsers = {
+        'admin': { password: 'admin123' }, // Admin user
+        'user1': { password: 'password1' }, // Regular user
+        'user2': { password: 'password2' }, // Another regular user
+      };
+      localStorage.setItem('users', JSON.stringify(sampleUsers));
+    }
+
+    // Initialize sample tasks (if they don't exist)
+    if (!localStorage.getItem('tasks')) {
+      const sampleTasks = {
+        1: { id: 1, title: 'Task 1', description: 'Sample Task 1 Description', assignedTo: 'user1', assignedBy: 'admin', status: 'Pending' },
+        2: { id: 2, title: 'Task 2', description: 'Sample Task 2 Description', assignedTo: 'user2', assignedBy: 'admin', status: 'In Progress' },
+      };
+      localStorage.setItem('tasks', JSON.stringify(sampleTasks));
+    }
+
     let currentUser = null;
     const adminId = 'admin';
 
-    // Function to fetch data from localStorage
-    function fetchDataFromLocalStorage(key) {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
+    function fetchData(key) {
+      return JSON.parse(localStorage.getItem(key));
     }
 
-    // Function to save data to localStorage
-    function saveDataToLocalStorage(key, data) {
+    function saveData(key, data) {
       localStorage.setItem(key, JSON.stringify(data));
     }
 
-    // Login function
-    async function login() {
+    function login() {
       const id = document.getElementById('userId').value;
       const pass = document.getElementById('password').value;
-
-      const users = fetchDataFromLocalStorage('users') || {};
-      if (users[id] && users[id].password === pass) {
+      const users = fetchData('users');
+      if (users && users[id] && users[id].password === pass) {
         currentUser = id;
         document.getElementById('loginForm').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
@@ -172,7 +186,6 @@
       }
     }
 
-    // Logout function
     function logout() {
       currentUser = null;
       document.getElementById('loginForm').classList.remove('hidden');
@@ -182,15 +195,13 @@
       document.getElementById('adminPanel').classList.add('hidden');
     }
 
-    // Add new employee function
     function addEmployee() {
       const newEmpId = document.getElementById('newEmpId').value;
       const newEmpPass = document.getElementById('newEmpPass').value;
-      
       if (newEmpId && newEmpPass) {
-        const users = fetchDataFromLocalStorage('users') || {};
+        const users = fetchData('users');
         users[newEmpId] = { password: newEmpPass };
-        saveDataToLocalStorage('users', users);
+        saveData('users', users);
         alert('Employee added');
         document.getElementById('newEmpId').value = '';
         document.getElementById('newEmpPass').value = '';
@@ -198,58 +209,53 @@
       }
     }
 
-    // Remove employee function
     function removeEmployee() {
       const empId = document.getElementById('removeEmpId').value;
       if (empId) {
-        const users = fetchDataFromLocalStorage('users') || {};
+        const users = fetchData('users');
         delete users[empId];
-        saveDataToLocalStorage('users', users);
+        saveData('users', users);
         alert('Employee removed');
         document.getElementById('removeEmpId').value = '';
         populateEmployeeDropdown();
       }
     }
 
-    // Populate employee dropdown
     function populateEmployeeDropdown() {
-      const users = fetchDataFromLocalStorage('users') || {};
+      const users = fetchData('users');
       const dropdown = document.getElementById('assignedTo');
       dropdown.innerHTML = '';
-      
-      Object.keys(users).forEach(id => {
-        if (id !== currentUser) {
-          const opt = document.createElement('option');
-          opt.value = id;
-          opt.text = id;
-          dropdown.appendChild(opt);
-        }
-      });
+      if (users) {
+        Object.keys(users).forEach(id => {
+          if (id !== currentUser) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.text = id;
+            dropdown.appendChild(opt);
+          }
+        });
+      }
     }
 
-    // Assign task function
     function assignTask() {
       const title = document.getElementById('taskTitle').value;
       const description = document.getElementById('taskDescription').value;
       const assignedTo = document.getElementById('assignedTo').value;
-      
       if (title && description && assignedTo) {
+        const tasks = fetchData('tasks') || {};
         const task = { id: Date.now(), title, description, assignedTo, assignedBy: currentUser, status: 'Pending' };
-        const tasks = fetchDataFromLocalStorage('tasks') || {};
         tasks[task.id] = task;
-        saveDataToLocalStorage('tasks', tasks);
+        saveData('tasks', tasks);
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
         renderTasks();
       }
     }
 
-    // Render tasks function
     function renderTasks() {
       const container = document.getElementById('tasks');
       container.innerHTML = '';
-      const tasks = fetchDataFromLocalStorage('tasks');
-      
+      const tasks = fetchData('tasks');
       if (tasks) {
         Object.values(tasks).forEach(task => {
           if (task.assignedTo === currentUser || currentUser === adminId || task.assignedBy === currentUser) {
@@ -277,21 +283,19 @@
       }
     }
 
-    // Update task status
     function updateStatus(taskId, status) {
-      const tasks = fetchDataFromLocalStorage('tasks');
+      const tasks = fetchData('tasks');
       if (tasks[taskId]) {
         tasks[taskId].status = status;
-        saveDataToLocalStorage('tasks', tasks);
+        saveData('tasks', tasks);
         renderTasks();
       }
     }
 
-    // Delete task
     function deleteTask(taskId) {
-      const tasks = fetchDataFromLocalStorage('tasks');
+      const tasks = fetchData('tasks');
       delete tasks[taskId];
-      saveDataToLocalStorage('tasks', tasks);
+      saveData('tasks', tasks);
       renderTasks();
     }
   </script>
